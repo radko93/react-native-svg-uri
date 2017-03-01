@@ -1,9 +1,8 @@
 'use strict';
-import React, {Component, PropTypes} from "react";
+import React, {Component, PropTypes} from 'react';
 import {View} from 'react-native';
 import xmldom from 'xmldom';
 import resolveAssetSource from 'react-native/Libraries/Image/resolveAssetSource';
-
 import Svg, {
     Circle,
     Ellipse,
@@ -20,9 +19,7 @@ import Svg, {
     Defs,
     Stop
 } from 'react-native-svg';
-
 import * as utils from './utils';
-
 const ACEPTED_SVG_ELEMENTS = [
     'svg',
     'g',
@@ -33,11 +30,12 @@ const ACEPTED_SVG_ELEMENTS = [
     'radialGradient',
     'stop',
     'ellipse',
-    'polygon'
+    'polygon',
+    'line',
+    'polyline',
 ];
-
 // Attributes from SVG elements that are mapped directly.
-const SVG_ATTS = ['viewBox'];
+const SVG_ATTS = ['viewBox', 'width', 'height'];
 const G_ATTS = ['id'];
 const CIRCLE_ATTS = ['cx', 'cy', 'r', 'fill', 'stroke'];
 const PATH_ATTS = ['d', 'fill', 'stroke'];
@@ -47,9 +45,9 @@ const RADIALG_ATTS = ['id', 'cx', 'cy', 'r'];
 const STOP_ATTS = ['offset'];
 const ELLIPSE_ATTS = ['fill', 'cx', 'cy', 'rx', 'ry'];
 const POLYGON_ATTS = ['points'];
-
+// we don't have support from react-native-svg for these properties
+const IGNORE_STYLE_ATTRS = ['stroke-miterlimit'];
 let ind = 0;
-
 class SvgUri extends Component {
 
     constructor(props) {
@@ -65,7 +63,6 @@ class SvgUri extends Component {
             const source = resolveAssetSource(props.source) || {};
             this.fecthSVGData(source.uri);
         }
-
     }
 
     componentWillMount() {
@@ -146,6 +143,12 @@ class SvgUri extends Component {
             case 'polygon':
                 componentAtts = this.obtainComponentAtts(node, POLYGON_ATTS);
                 return <Polygon key={i} {...componentAtts}>{childs}</Polygon>;
+            case 'line':
+                componentAtts = this.obtainComponentAtts(node, LINEARG_ATTS);
+                return <Line key={i} {...componentAtts}>{childs}</Line>;
+            case 'polyline':
+                componentAtts = this.obtainComponentAtts(node, POLYGON_ATTS);
+                return <Polyline key={i} {...componentAtts}>{childs}</Polyline>;
             default:
                 return null;
         }
@@ -154,31 +157,28 @@ class SvgUri extends Component {
     obtainComponentAtts({attributes}, enabledAttributes) {
         let styleAtts = {};
         Array.from(attributes).forEach(({nodeName, nodeValue}) => {
-            Object.assign(styleAtts, utils.transformStyle(nodeName, nodeValue, this.props.fill));
+            Object.assign(styleAtts, utils.transformStyle(nodeName, nodeValue, this.props.fill, IGNORE_STYLE_ATTRS));
         });
-
         let componentAtts = Array.from(attributes)
             .map(utils.camelCaseNodeName)
             .map(utils.removePixelsFromNodeValue)
+            .map(utils.transformAttrValues)
             .filter(utils.getEnabledAttributes(enabledAttributes))
             .reduce((acc, {nodeName, nodeValue}) => ({
                 ...acc,
                 [nodeName]: this.state.fill && nodeName === 'fill' ? this.state.fill : nodeValue,
             }), {});
         Object.assign(componentAtts, styleAtts);
-
         return componentAtts;
     }
 
     inspectNode(node) {
         //Process the xml node
         let arrayElements = [];
-
         // Only process accepted elements
         if (!ACEPTED_SVG_ELEMENTS.includes(node.nodeName))
             return null;
         // if have children process them.
-
         // Recursive function.
         if (node.childNodes && node.childNodes.length > 0) {
             for (let i = 0; i < node.childNodes.length; i++) {
