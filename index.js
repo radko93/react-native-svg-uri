@@ -54,7 +54,7 @@ class SvgUri extends Component {
 
     constructor(props) {
         super(props);
-        this.state = {svgXmlData: props.svgXmlData};
+        this.state = {fill: props.fill, svgXmlData: props.svgXmlData};
         this.createSVGElement = this.createSVGElement.bind(this);
         this.obtainComponentAtts = this.obtainComponentAtts.bind(this);
         this.inspectNode = this.inspectNode.bind(this);
@@ -65,6 +65,7 @@ class SvgUri extends Component {
             const source = resolveAssetSource(props.source) || {};
             this.fecthSVGData(source.uri);
         }
+
     }
 
     componentWillMount() {
@@ -82,6 +83,12 @@ class SvgUri extends Component {
             if (source.uri !== oldSource.uri) {
                 this.fecthSVGData(source.uri);
             }
+        }
+        if (nextProps.svgXmlData !== this.props.svgXmlData) {
+            this.setState({svgXmlData: nextProps.svgXmlData});
+        }
+        if (nextProps.fill !== this.props.fill) {
+            this.setState({fill: nextProps.fill});
         }
     }
 
@@ -156,7 +163,7 @@ class SvgUri extends Component {
             .filter(utils.getEnabledAttributes(enabledAttributes))
             .reduce((acc, {nodeName, nodeValue}) => ({
                 ...acc,
-                [nodeName]: this.props.fill && nodeName === 'fill' ? this.props.fill : nodeValue,
+                [nodeName]: this.state.fill && nodeName === 'fill' ? this.state.fill : nodeValue,
             }), {});
         Object.assign(componentAtts, styleAtts);
 
